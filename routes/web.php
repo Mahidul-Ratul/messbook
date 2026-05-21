@@ -1,5 +1,7 @@
 <?php
 
+
+use App\Models\User;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminController;
@@ -17,6 +19,9 @@ use App\Http\Controllers\Owner\MemberMealController;
 use App\Http\Controllers\Owner\MonthlyReportController;
 use App\Http\Controllers\Owner\OwnerAjaxController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Member\MemberMealController as MemberMemberMealController;
+
+// Routes
 
 // Home
 
@@ -38,6 +43,22 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/profile/{user}', [UserProfileController::class, 'show'])->name('profile.show');
+
+    // Dashboard route - redirects based on user role
+    Route::get('/dashboard', function () {
+        /** @var User $user */
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if ($user->hasRole('admin')) {
+            return redirect()->route('admin.dashboard');
+        }
+        if ($user->hasRole('mess_owner')) {
+            return redirect()->route('owner.dashboard');
+        }
+        if ($user->hasRole('member')) {
+            return redirect()->route('member.dashboard');
+        }
+        return redirect()->route('welcome');
+    })->name('dashboard');
 
     // General Reports
     Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
@@ -112,19 +133,21 @@ Route::middleware(['auth', 'role:member'])->prefix('member')->name('member.')->g
     Route::delete('/my-messes/{mess}/leave', [MessJoinController::class, 'leaveMess'])->name('messes.leave');
     
     // Expenses
-    Route::get('expenses', [App\Http\Controllers\Member\ExpenseController::class, 'index'])->name('expenses.index');
-    Route::post('expenses', [App\Http\Controllers\Member\ExpenseController::class, 'store'])->name('expenses.store');
-    Route::get('expenses/{expense}/edit', [App\Http\Controllers\Member\ExpenseController::class, 'edit'])->name('expenses.edit');
-    Route::put('expenses/{expense}', [App\Http\Controllers\Member\ExpenseController::class, 'update'])->name('expenses.update');
-    Route::delete('expenses/{expense}', [App\Http\Controllers\Member\ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+    Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
+    Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+    Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    // Billing view
+    Route::get('bill/{id}', [ExpenseController::class, 'showBill'])->name('bill.show');
     
     // Member Meals
-    Route::get('meals', [App\Http\Controllers\Member\MemberMealController::class, 'index'])->name('meals.index');
-    Route::get('meals/create', [App\Http\Controllers\Member\MemberMealController::class, 'create'])->name('meals.create');
-    Route::post('meals', [App\Http\Controllers\Member\MemberMealController::class, 'store'])->name('meals.store');
-    Route::get('meals/{memberMeal}/edit', [App\Http\Controllers\Member\MemberMealController::class, 'edit'])->name('meals.edit');
-    Route::put('meals/{memberMeal}', [App\Http\Controllers\Member\MemberMealController::class, 'update'])->name('meals.update');
-    Route::delete('meals/{memberMeal}', [App\Http\Controllers\Member\MemberMealController::class, 'destroy'])->name('meals.destroy');
+    Route::get('meals', [MemberMemberMealController::class, 'index'])->name('meals.index');
+    Route::get('meals/create', [MemberMemberMealController::class, 'create'])->name('meals.create');
+    Route::post('meals', [MemberMemberMealController::class, 'store'])->name('meals.store');
+    Route::get('meals/{memberMeal}/edit', [MemberMemberMealController::class, 'edit'])->name('meals.edit');
+    Route::put('meals/{memberMeal}', [MemberMemberMealController::class, 'update'])->name('meals.update');
+    Route::delete('meals/{memberMeal}', [MemberMemberMealController::class, 'destroy'])->name('meals.destroy');
 });
 
 // Route::get('/', function () {
@@ -132,8 +155,8 @@ Route::middleware(['auth', 'role:member'])->prefix('member')->name('member.')->g
 // });
 
 Route::get('/redirect-after-login', function () {
-       /** @var \App\Models\User $user */
-           $user = \Illuminate\Support\Facades\Auth::user();
+    /** @var User $user */
+    $user = \Illuminate\Support\Facades\Auth::user();
 
 
 

@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\Mess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class ExpenseController extends Controller
 {
@@ -66,4 +67,16 @@ class ExpenseController extends Controller
 
         return redirect()->route('member.expenses.index')->with('success', 'Expense deleted.');
     }
+
+    public function showBill($id)
+    {
+        $response = Http::get("http://billing-service:5000/calculate-bill/{$id}");
+        if (! $response->successful()) {
+            abort(502, 'Billing service error');
+        }
+        $data = $response->json();
+
+        return view('member.bill', ['billData' => $data]);
+    }
 }
+

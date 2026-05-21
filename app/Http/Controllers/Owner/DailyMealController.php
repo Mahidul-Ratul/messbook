@@ -13,6 +13,7 @@ class DailyMealController extends Controller
 {
     private function getMess()
     {
+        /** @var User $user */
         $user = Auth::user();
         
         if ($user->hasRole('mess_owner')) {
@@ -41,6 +42,7 @@ class DailyMealController extends Controller
     public function create()
     {
         $mess = $this->getMess();
+        /** @var User $user */
         $user = Auth::user();
 
         if ($user->hasRole('mess_owner')) {
@@ -58,6 +60,7 @@ class DailyMealController extends Controller
     public function store(Request $request)
     {
         $mess = $this->getMess();
+        /** @var User $user */
         $user = Auth::user();
 
         $request->validate([
@@ -94,6 +97,7 @@ class DailyMealController extends Controller
     public function edit(DailyMeal $dailyMeal)
     {
         $mess = $this->getMess();
+        /** @var User $user */
         $user = Auth::user();
 
         // Ensure the meal belongs to the user's mess
@@ -120,6 +124,7 @@ class DailyMealController extends Controller
     public function update(Request $request, DailyMeal $dailyMeal)
     {
         $mess = $this->getMess();
+        /** @var User $user */
         $user = Auth::user();
 
         // Ensure the meal belongs to the user's mess
@@ -155,6 +160,7 @@ class DailyMealController extends Controller
     public function destroy(DailyMeal $dailyMeal)
     {
         $mess = $this->getMess();
+        /** @var User $user */
         $user = Auth::user();
         
         // Ensure the meal belongs to the user's mess

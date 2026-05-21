@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MessBook Billing Service</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+      body {
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+        min-height: 100vh;
+      }
+      .hero {
+        background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%);
+        color: white;
+        border-radius: 1.5rem;
+      }
+      .card-soft {
+        border: 0;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        border-radius: 1rem;
+      }
+      .metric {
+        font-size: 1.75rem;
+        font-weight: 700;
+      }
+      .muted-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .table thead th {
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .4rem .75rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.16);
+        color: #fff;
+        font-size: .9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container py-4 py-lg-5">
+      <div class="hero p-4 p-lg-5 mb-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start align-items-lg-center">
+          <div>
+            <div class="pill mb-3"><i class="bi bi-lightning-charge-fill"></i> {{ service_status }}</div>
+            <h1 class="display-6 fw-bold mb-2">MessBook Billing Service</h1>
+            <p class="lead mb-0 text-white-75">
+              Generate a mess billing summary, monthly meal rate, member balance, and supporting transaction details.
+            </p>
+          </div>
+          <div class="text-lg-end">
+            <div class="small text-white-50">API endpoint</div>
+            <div class="fw-semibold">/api/bill/&lt;member_id&gt;</div>
+            <div class="small text-white-50 mt-2">Health</div>
+            <div class="fw-semibold">/api/health</div>
+          </div>
+        </div>
+      </div>
+
+      {% if error %}
+        <div class="alert alert-danger card-soft" role="alert">
+          <strong>Unable to build bill:</strong> {{ error }}
+        </div>
+      {% endif %}
+
+      <div class="card card-soft mb-4">
+        <div class="card-body p-4">
+          <h2 class="h5 mb-3">Build a bill</h2>
+          <form class="row g-3 align-items-end" method="get" action="/">
+            <div class="col-12 col-md-4">
+              <label for="member_id" class="form-label">Member</label>
+              <select class="form-select" id="member_id" name="member_id" required>
+                <option value="">Select a member</option>
+                {% for member in members %}
+                  <option value="{{ member.id }}" {% if member_id == member.id %}selected{% endif %}>
+                    {{ member.name }} ({{ member.email }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <label for="mess_id" class="form-label">Mess</label>
+              <select class="form-select" id="mess_id" name="mess_id">
+                <option value="">Auto-select first mess</option>
+                {% for mess in messes %}
+                  <option value="{{ mess.mess_id }}" {% if mess_id == mess.mess_id %}selected{% endif %}>
+                    Mess #{{ mess.mess_id }} ({{ mess.member_count }} members)
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <label for="month" class="form-label">Month</label>
+              <input class="form-control" type="month" id="month" name="month" value="{{ month }}">
+            </div>
+            <div class="col-12 col-md-2 d-grid">
+              <button class="btn btn-primary btn-lg" type="submit">
+                <i class="bi bi-calculator"></i> Calculate
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {% if bill_data %}
+        <div class="card card-soft mb-4">
+          <div class="card-body p-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
+              <div>
+                <div class="muted-label">Selected member</div>
+                <h2 class="h4 mb-1">{{ bill_data.member.name }}</h2>
+                <div class="text-muted">Member ID {{ bill_data.member.id }} · {{ bill_data.member.email }}</div>
+              </div>
+              <div class="text-lg-end">
+                <div class="muted-label">Billing period</div>
+                <h2 class="h4 mb-1">{{ bill_data.month_label }}</h2>
+                <div class="text-muted">{{ bill_data.range.start }} to {{ bill_data.range.end }}</div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-6 col-lg-3">
+                <div class="p-3 bg-light rounded-4">
+                  <div class="muted-label">Mess</div>
+                  <div class="metric">{{ bill_data.mess_label }}</div>
+                </div>
+              </div>
+              <div class="col-6 col-lg-3">
+                <div class="p-3 bg-light rounded-4">
+                  <div class="muted-label">Meal rate</div>
+                  <div class="metric">{{ '%.2f'|format(bill_data.summary.meal_rate) }}</div>
+                </div>
+              </div>
+              <div class="col-6 col-lg-3">
+                <div class="p-3 bg-light rounded-4">
+                  <div class="muted-label">Bill amount</div>
+                  <div class="metric text-primary">{{ '%.2f'|format(bill_data.summary.bill_amount) }}</div>
+                </div>
+              </div>
+              <div class="col-6 col-lg-3">
+                <div class="p-3 bg-light rounded-4">
+                  <div class="muted-label">Balance</div>
+                  <div class="metric {% if bill_data.summary.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ '%.2f'|format(bill_data.summary.balance) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 bg-primary text-white rounded-4 h-100">
+                  <div class="card-body">
+                    <div class="muted-label text-white-50">Total meals</div>
+                    <div class="metric">{{ '%.2f'|format(bill_data.summary.total_meals) }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 bg-success text-white rounded-4 h-100">
+                  <div class="card-body">
+                    <div class="muted-label text-white-50">Total expenses</div>
+                    <div class="metric">{{ '%.2f'|format(bill_data.summary.total_expenses) }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 bg-warning text-dark rounded-4 h-100">
+                  <div class="card-body">
+                    <div class="muted-label text-dark-50">Member meals</div>
+                    <div class="metric">{{ '%.2f'|format(bill_data.summary.member_meals) }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl-3">
+                <div class="card border-0 bg-dark text-white rounded-4 h-100">
+                  <div class="card-body">
+                    <div class="muted-label text-white-50">Member expenses</div>
+                    <div class="metric">{{ '%.2f'|format(bill_data.summary.member_expenses) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-12 col-xl-4">
+            <div class="card card-soft h-100">
+              <div class="card-body p-4">
+                <h3 class="h5 mb-3">Summary</h3>
+                <div class="d-flex justify-content-between mb-2"><span>Members in mess</span><strong>{{ bill_data.summary.member_count }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Selected mess ID</span><strong>{{ bill_data.mess_id }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Month</span><strong>{{ bill_data.month }}</strong></div>
+                <div class="d-flex justify-content-between"><span>Period</span><strong>{{ bill_data.range.start }} → {{ bill_data.range.end }}</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-8">
+            <div class="card card-soft mb-4">
+              <div class="card-body p-4">
+                <h3 class="h5 mb-3">Daily meals</h3>
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Total meal</th>
+                        <th>Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in bill_data.daily_meals %}
+                        <tr>
+                          <td>{{ row.date }}</td>
+                          <td>{{ row.total_meal }}</td>
+                          <td>{{ row.notes or '-' }}</td>
+                        </tr>
+                      {% else %}
+                        <tr><td colspan="3" class="text-muted">No daily meals found for this period.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card card-soft mb-4">
+              <div class="card-body p-4">
+                <h3 class="h5 mb-3">Member meal logs</h3>
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Meal count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in bill_data.member_meal_rows %}
+                        <tr>
+                          <td>{{ row.date }}</td>
+                          <td>{{ row.meal_count }}</td>
+                        </tr>
+                      {% else %}
+                        <tr><td colspan="2" class="text-muted">No member meal records found for this period.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card card-soft">
+              <div class="card-body p-4">
+                <h3 class="h5 mb-3">Member expenses</h3>
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in bill_data.member_expense_rows %}
+                        <tr>
+                          <td>{{ row.date }}</td>
+                          <td>{{ '%.2f'|format(row.amount) }}</td>
+                          <td>{{ row.description or '-' }}</td>
+                        </tr>
+                      {% else %}
+                        <tr><td colspan="3" class="text-muted">No member expenses found for this period.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </body>
+</html>
